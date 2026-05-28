@@ -49,6 +49,7 @@ export const getCurrentSession = cache(async (): Promise<CurrentSession | null> 
         userId: payload.userId,
         companyId: payload.companyId,
         user: { isActive: true },
+        company: { status: { not: "SUSPENDED" } },
       },
       select: {
         id: true,

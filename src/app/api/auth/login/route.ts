@@ -5,6 +5,8 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { createSessionToken, sessionCookieName } from "@/lib/session-token";
 
+const sessionMaxAgeSeconds = 60 * 60 * 8;
+
 const loginSchema = z.object({
   email: z.string().email().transform((value) => value.toLowerCase().trim()),
   password: z.string().min(8),
@@ -29,81 +31,150 @@ function isRateLimited(ip: string) {
   return current.count > 10;
 }
 
+function shouldUseSecureCookie(request: NextRequest) {
+  const forwardedProto = request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
+  const appUrl = process.env.APP_URL;
+
+  if (forwardedProto === "https") {
+    return true;
+  }
+
+  if (appUrl) {
+    try {
+      return new URL(appUrl).protocol === "https:";
+    } catch {
+      return process.env.NODE_ENV === "production";
+    }
+  }
+
+  return process.env.NODE_ENV === "production";
+}
+
+function loginJson(
+  body: { ok: true; redirectTo: string } | { ok: false; error: string },
+  status = 200,
+) {
+  return NextResponse.json(body, { status });
+}
+
 export async function POST(request: NextRequest) {
   const ip = getClientIp(request);
+  const forwardedProto = request.headers.get("x-forwarded-proto") ?? "none";
+  const host = request.headers.get("host") ?? "unknown";
 
-  if (isRateLimited(ip)) {
-    return NextResponse.json({ error: "Too many attempts" }, { status: 429 });
-  }
+  try {
+    if (isRateLimited(ip)) {
+      console.warn("[auth:login] rate_limited", { ip, host, forwardedProto });
+      return loginJson({ ok: false, error: "Demasiados intentos. Prueba de nuevo en unos minutos." }, 429);
+    }
 
-  const parsed = loginSchema.safeParse(await request.json().catch(() => null));
-  if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
-  }
+    const parsed = loginSchema.safeParse(await request.json().catch(() => null));
+    if (!parsed.success) {
+      console.warn("[auth:login] invalid_payload", { ip, host, forwardedProto });
+      return loginJson({ ok: false, error: "Peticion de login no valida." }, 400);
+    }
 
-  const user = await db.user.findUnique({
-    where: { email: parsed.data.email },
-    include: {
-      memberships: {
-        include: { company: true },
-        orderBy: { createdAt: "asc" },
-      },
-    },
-  });
-
-  const validPassword = user
-    ? await bcrypt.compare(parsed.data.password, user.passwordHash)
-    : false;
-
-  if (!user || !user.isActive || !validPassword || user.memberships.length === 0) {
-    await db.auditLog.create({
-      data: {
-        action: "auth.login_failed",
-        entity: "User",
-        ipAddress: ip,
-        userAgent: request.headers.get("user-agent"),
-        metadata: { email: parsed.data.email },
+    const user = await db.user.findUnique({
+      where: { email: parsed.data.email },
+      include: {
+        memberships: {
+          include: { company: true },
+          orderBy: { createdAt: "asc" },
+        },
       },
     });
-    return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
+
+    const validPassword = user
+      ? await bcrypt.compare(parsed.data.password, user.passwordHash)
+      : false;
+    const membership = user?.memberships.find((item) => item.company.status !== "SUSPENDED");
+
+    console.info("[auth:login] checked_credentials", {
+      email: parsed.data.email,
+      userFound: Boolean(user),
+      isActive: user?.isActive ?? false,
+      validPassword,
+      memberships: user?.memberships.length ?? 0,
+      selectedCompanyStatus: membership?.company.status ?? null,
+      host,
+      forwardedProto,
+    });
+
+    if (!user || !user.isActive || !validPassword || !membership) {
+      await db.auditLog.create({
+        data: {
+          action: "auth.login_failed",
+          entity: "User",
+          ipAddress: ip,
+          userAgent: request.headers.get("user-agent"),
+          metadata: { email: parsed.data.email },
+        },
+      });
+      return loginJson({ ok: false, error: "Credenciales no validas, usuario inactivo o empresa sin acceso." }, 401);
+    }
+
+    const token = await createSessionToken({
+      userId: user.id,
+      companyId: membership.companyId,
+      membershipRole: membership.role,
+      platformRole: user.platformRole,
+    });
+
+    await db.$transaction([
+      db.user.update({
+        where: { id: user.id },
+        data: { lastLoginAt: new Date() },
+      }),
+      db.auditLog.create({
+        data: {
+          action: "auth.login_success",
+          entity: "User",
+          entityId: user.id,
+          userId: user.id,
+          companyId: membership.companyId,
+          ipAddress: ip,
+          userAgent: request.headers.get("user-agent"),
+        },
+      }),
+    ]);
+
+    const secure = shouldUseSecureCookie(request);
+    const response = loginJson({ ok: true, redirectTo: "/dashboard" });
+    response.cookies.set({
+      name: sessionCookieName,
+      value: token,
+      httpOnly: true,
+      sameSite: "lax",
+      secure,
+      path: "/",
+      maxAge: sessionMaxAgeSeconds,
+    });
+
+    console.info("[auth:login] success", {
+      email: user.email,
+      userId: user.id,
+      companyId: membership.companyId,
+      companyStatus: membership.company.status,
+      role: membership.role,
+      cookieName: sessionCookieName,
+      cookieSecure: secure,
+      cookieSameSite: "lax",
+      cookiePath: "/",
+      cookieMaxAge: sessionMaxAgeSeconds,
+      host,
+      forwardedProto,
+      appUrl: process.env.APP_URL ?? null,
+      nodeEnv: process.env.NODE_ENV ?? null,
+    });
+
+    return response;
+  } catch (error) {
+    console.error("[auth:login] unexpected_error", {
+      error,
+      ip,
+      host,
+      forwardedProto,
+    });
+    return loginJson({ ok: false, error: "Error interno al iniciar sesion." }, 500);
   }
-
-  const membership = user.memberships[0];
-  const token = await createSessionToken({
-    userId: user.id,
-    companyId: membership.companyId,
-    membershipRole: membership.role,
-    platformRole: user.platformRole,
-  });
-
-  await db.$transaction([
-    db.user.update({
-      where: { id: user.id },
-      data: { lastLoginAt: new Date() },
-    }),
-    db.auditLog.create({
-      data: {
-        action: "auth.login_success",
-        entity: "User",
-        entityId: user.id,
-        userId: user.id,
-        companyId: membership.companyId,
-        ipAddress: ip,
-        userAgent: request.headers.get("user-agent"),
-      },
-    }),
-  ]);
-
-  const response = NextResponse.json({ ok: true });
-  response.cookies.set({
-    name: sessionCookieName,
-    value: token,
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    maxAge: 60 * 60 * 8,
-  });
-
-  return response;
 }

@@ -13,18 +13,21 @@ function slugify(value: string) {
 }
 
 async function main() {
-  const email = process.env.SEED_ADMIN_EMAIL ?? "admin@controlithub.local";
+  const email = (process.env.SEED_ADMIN_EMAIL ?? "admin@controlithub.local").toLowerCase().trim();
   const password = process.env.SEED_ADMIN_PASSWORD ?? "Cambia-Esta-Clave-2026!";
   const companyName = process.env.SEED_COMPANY_NAME ?? "Control IT Hub";
   const passwordHash = await bcrypt.hash(password, 12);
 
   const company = await prisma.company.upsert({
     where: { slug: slugify(companyName) },
-    update: {},
+    update: {
+      name: companyName,
+      status: "ACTIVE",
+    },
     create: {
       name: companyName,
       slug: slugify(companyName),
-      status: "TRIAL",
+      status: "ACTIVE",
       plan: "starter",
     },
   });
