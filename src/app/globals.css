@@ -33,7 +33,9 @@ a {
 }
 
 button,
-input {
+input,
+select,
+textarea {
   font: inherit;
 }
 
@@ -104,6 +106,11 @@ input {
   background: #fff;
 }
 
+.textarea {
+  min-height: 88px;
+  resize: vertical;
+}
+
 .button {
   min-height: 42px;
   display: inline-flex;
@@ -130,6 +137,20 @@ input {
 
 .button.secondary:hover {
   background: #e2e8f0;
+}
+
+.button.danger {
+  background: var(--danger);
+}
+
+.button.danger:hover {
+  background: #991b1b;
+}
+
+.button.compact {
+  min-height: 34px;
+  padding: 7px 10px;
+  font-size: 13px;
 }
 
 .error {
@@ -257,6 +278,10 @@ input {
   box-shadow: var(--shadow);
 }
 
+.main > .card + .card {
+  margin-top: 16px;
+}
+
 .card-header {
   display: flex;
   justify-content: space-between;
@@ -272,6 +297,24 @@ input {
 
 .card-body {
   padding: 18px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 0;
+}
+
+.field.wide,
+.form-actions.wide {
+  grid-column: span 2;
+}
+
+.form-actions {
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
 }
 
 .stat {
@@ -372,7 +415,8 @@ input {
 
 @media (max-width: 1024px) {
   .stats-grid,
-  .content-grid {
+  .content-grid,
+  .form-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -381,8 +425,14 @@ input {
   .login-shell,
   .app-shell,
   .stats-grid,
-  .content-grid {
+  .content-grid,
+  .form-grid {
     grid-template-columns: 1fr;
+  }
+
+  .field.wide,
+  .form-actions.wide {
+    grid-column: auto;
   }
 
   .login-aside {

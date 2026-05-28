@@ -89,17 +89,6 @@ export async function POST(request: NextRequest) {
       : false;
     const membership = user?.memberships.find((item) => item.company.status !== "SUSPENDED");
 
-    console.info("[auth:login] checked_credentials", {
-      email: parsed.data.email,
-      userFound: Boolean(user),
-      isActive: user?.isActive ?? false,
-      validPassword,
-      memberships: user?.memberships.length ?? 0,
-      selectedCompanyStatus: membership?.company.status ?? null,
-      host,
-      forwardedProto,
-    });
-
     if (!user || !user.isActive || !validPassword || !membership) {
       await db.auditLog.create({
         data: {
@@ -148,23 +137,6 @@ export async function POST(request: NextRequest) {
       secure,
       path: "/",
       maxAge: sessionMaxAgeSeconds,
-    });
-
-    console.info("[auth:login] success", {
-      email: user.email,
-      userId: user.id,
-      companyId: membership.companyId,
-      companyStatus: membership.company.status,
-      role: membership.role,
-      cookieName: sessionCookieName,
-      cookieSecure: secure,
-      cookieSameSite: "lax",
-      cookiePath: "/",
-      cookieMaxAge: sessionMaxAgeSeconds,
-      host,
-      forwardedProto,
-      appUrl: process.env.APP_URL ?? null,
-      nodeEnv: process.env.NODE_ENV ?? null,
     });
 
     return response;

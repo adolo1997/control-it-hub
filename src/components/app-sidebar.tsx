@@ -1,4 +1,4 @@
-import { Building2, Gauge, KeyRound, Layers3, ScrollText, ShieldCheck } from "lucide-react";
+import { Building2, Gauge, KeyRound, Layers3, ScrollText, ShieldCheck, Users } from "lucide-react";
 import Link from "next/link";
 
 import { LogoutButton } from "@/components/logout-button";
@@ -15,6 +15,7 @@ export function AppSidebar({ companyName, userName, role }: AppSidebarProps) {
     { href: "/licencias", label: "Licencias", icon: KeyRound },
     { href: "/integraciones", label: "Integraciones", icon: Layers3 },
     { href: "/registros", label: "Registros", icon: ScrollText },
+    { href: "/usuarios", label: "Usuarios", icon: Users },
     { href: "/empresas", label: "Empresas", icon: Building2 },
   ];
 
@@ -28,7 +29,7 @@ export function AppSidebar({ companyName, userName, role }: AppSidebarProps) {
       </div>
       <div className="tenant-card">
         <strong>{companyName}</strong>
-        <span>{userName} · {role}</span>
+        <span>{userName} - {role}</span>
       </div>
       <nav className="nav" aria-label="Principal">
         {items.map((item) => {

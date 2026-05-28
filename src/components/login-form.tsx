@@ -38,19 +38,12 @@ export function LoginForm() {
         error: "La respuesta del servidor no es JSON valido.",
       }))) as LoginResponse;
 
-      console.info("[login-form] response", {
-        status: response.status,
-        okHttp: response.ok,
-        body: data,
-      });
-
       if (!response.ok || data.ok !== true) {
         setError(data.error ?? "No se pudo iniciar sesion.");
         return;
       }
 
       const redirectTo = data.redirectTo ?? "/dashboard";
-      console.info("[login-form] ok=true; router.push", { redirectTo });
       router.push(redirectTo);
     } catch (loginError) {
       console.error("[login-form] request_failed", loginError);
