@@ -153,6 +153,22 @@ textarea {
   font-size: 13px;
 }
 
+.icon-button {
+  width: 36px;
+  height: 36px;
+  display: inline-grid;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  color: var(--text);
+  background: #edf1f5;
+  cursor: pointer;
+}
+
+.icon-button:hover {
+  background: #e2e8f0;
+}
+
 .error {
   padding: 10px 12px;
   border-radius: 8px;
@@ -315,6 +331,74 @@ textarea {
   display: flex;
   align-items: flex-end;
   justify-content: flex-end;
+}
+
+.modal {
+  width: min(920px, calc(100vw - 32px));
+  max-height: min(840px, calc(100vh - 32px));
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  color: var(--text);
+  background: transparent;
+}
+
+.modal::backdrop {
+  background: rgba(17, 24, 39, 0.48);
+}
+
+.modal-panel {
+  overflow: auto;
+  max-height: min(840px, calc(100vh - 32px));
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.modal-header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.modal-body {
+  padding: 18px;
+}
+
+.actions-cell {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.quick-form {
+  margin: 0;
+}
+
+.compact-select {
+  min-height: 34px;
+  min-width: 190px;
+  padding: 6px 10px;
+  font-size: 13px;
+}
+
+.status-stack {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
 }
 
 .stat {

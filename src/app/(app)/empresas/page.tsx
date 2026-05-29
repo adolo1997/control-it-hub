@@ -1,3 +1,4 @@
+import { Modal } from "@/components/modal";
 import { StatusBadge } from "@/components/status-badge";
 import { db } from "@/lib/db";
 import { requireCurrentSession } from "@/lib/session";
@@ -26,39 +27,36 @@ export default async function EmpresasPage() {
           <h1>Empresas</h1>
           <p className="muted">Base multiempresa para vender el servicio por cliente o division.</p>
         </div>
+        {session.platformRole === "SUPER_ADMIN" ? (
+          <Modal title="Anadir empresa" triggerLabel="Anadir empresa">
+            <form action={createCompany} className="modal-body form-grid">
+              <label className="field">
+                Nombre
+                <input className="input" name="name" placeholder="Cliente o division" required />
+              </label>
+              <label className="field">
+                CIF/NIF
+                <input className="input" name="taxId" placeholder="Opcional" />
+              </label>
+              <label className="field">
+                Estado
+                <select className="input" name="status" defaultValue="ACTIVE">
+                  <option value="ACTIVE">Activa</option>
+                  <option value="TRIAL">Trial</option>
+                  <option value="SUSPENDED">Suspendida</option>
+                </select>
+              </label>
+              <label className="field">
+                Plan
+                <input className="input" name="plan" defaultValue="starter" required />
+              </label>
+              <div className="form-actions wide">
+                <button className="button" type="submit">Crear empresa</button>
+              </div>
+            </form>
+          </Modal>
+        ) : null}
       </header>
-      {session.platformRole === "SUPER_ADMIN" ? (
-        <article className="card">
-          <div className="card-header">
-            <h2>Nueva empresa</h2>
-          </div>
-          <form action={createCompany} className="card-body form-grid">
-            <label className="field">
-              Nombre
-              <input className="input" name="name" placeholder="Cliente o division" required />
-            </label>
-            <label className="field">
-              CIF/NIF
-              <input className="input" name="taxId" placeholder="Opcional" />
-            </label>
-            <label className="field">
-              Estado
-              <select className="input" name="status" defaultValue="ACTIVE">
-                <option value="ACTIVE">Activa</option>
-                <option value="TRIAL">Trial</option>
-                <option value="SUSPENDED">Suspendida</option>
-              </select>
-            </label>
-            <label className="field">
-              Plan
-              <input className="input" name="plan" defaultValue="starter" required />
-            </label>
-            <div className="form-actions wide">
-              <button className="button" type="submit">Crear empresa</button>
-            </div>
-          </form>
-        </article>
-      ) : null}
 
       <article className="card">
         <div className="card-header">

@@ -9,7 +9,7 @@ import { db } from "@/lib/db";
 import { requireCurrentSession } from "@/lib/session";
 
 const companyStatuses = ["ACTIVE", "SUSPENDED", "TRIAL"] as const;
-const licenseStatuses = ["ACTIVE", "EXPIRING", "EXPIRED", "CANCELLED"] as const;
+const editableLicenseStatuses = ["ACTIVE", "EXPIRING", "EXPIRED"] as const;
 const membershipRoles = ["OWNER", "ADMIN", "TECH", "BILLING", "VIEWER"] as const;
 
 function requireRole(role: string, allowed: readonly string[]) {
@@ -89,13 +89,23 @@ const createLicenseSchema = z.object({
   provider: z.string().trim().min(2, "Proveedor obligatorio."),
   product: z.string().trim().min(2, "Producto obligatorio."),
   seats: z.coerce.number().int().min(1).default(1),
-  status: z.enum(licenseStatuses).default("ACTIVE"),
+  status: z.enum(editableLicenseStatuses).default("ACTIVE"),
   purchaseDate: z.string().optional(),
   renewalDate: z.string().optional(),
   cost: z.string().optional(),
   currency: z.string().trim().min(3).max(3).default("EUR"),
   vendorAccount: z.string().optional(),
   notes: z.string().optional(),
+});
+
+const updateLicenseSchema = createLicenseSchema.extend({
+  id: z.string().min(1),
+  status: z.enum(editableLicenseStatuses).default("ACTIVE"),
+});
+
+const updateLicenseStatusSchema = z.object({
+  id: z.string().min(1),
+  status: z.enum(editableLicenseStatuses),
 });
 
 export async function createLicense(formData: FormData) {
@@ -114,7 +124,7 @@ export async function createLicense(formData: FormData) {
       renewalDate: optionalDate(data.renewalDate),
       costCents: eurosToCents(data.cost),
       currency: data.currency.toUpperCase(),
-      vendorAccount: optionalText(data.vendorAccount),
+      vendorAccount: null,
       notes: optionalText(data.notes),
     },
   });
@@ -122,6 +132,75 @@ export async function createLicense(formData: FormData) {
   await audit("license.create", "License", license.id, {
     provider: license.provider,
     product: license.product,
+  });
+
+  revalidatePath("/licencias");
+  revalidatePath("/dashboard");
+}
+
+export async function updateLicense(formData: FormData) {
+  const session = await requireCurrentSession();
+  requireRole(session.membershipRole, ["OWNER", "ADMIN", "BILLING"]);
+
+  const data = updateLicenseSchema.parse(Object.fromEntries(formData));
+  const current = await db.license.findFirst({
+    where: { id: data.id, companyId: session.company.id },
+    select: { id: true },
+  });
+
+  if (!current) {
+    throw new Error("Licencia no encontrada.");
+  }
+
+  const license = await db.license.update({
+    where: { id: current.id },
+    data: {
+      provider: data.provider,
+      product: data.product,
+      seats: data.seats,
+      status: data.status,
+      purchaseDate: optionalDate(data.purchaseDate),
+      renewalDate: optionalDate(data.renewalDate),
+      costCents: eurosToCents(data.cost),
+      currency: data.currency.toUpperCase(),
+      vendorAccount: null,
+      notes: optionalText(data.notes),
+    },
+  });
+
+  await audit("license.update", "License", license.id, {
+    provider: license.provider,
+    product: license.product,
+    status: license.status,
+  });
+
+  revalidatePath("/licencias");
+  revalidatePath("/dashboard");
+}
+
+export async function updateLicenseStatus(formData: FormData) {
+  const session = await requireCurrentSession();
+  requireRole(session.membershipRole, ["OWNER", "ADMIN", "BILLING"]);
+
+  const data = updateLicenseStatusSchema.parse(Object.fromEntries(formData));
+  const license = await db.license.findFirst({
+    where: { id: data.id, companyId: session.company.id },
+    select: { id: true, provider: true, product: true },
+  });
+
+  if (!license) {
+    throw new Error("Licencia no encontrada.");
+  }
+
+  await db.license.update({
+    where: { id: license.id },
+    data: { status: data.status },
+  });
+
+  await audit("license.status_update", "License", license.id, {
+    provider: license.provider,
+    product: license.product,
+    status: data.status,
   });
 
   revalidatePath("/licencias");

@@ -1,3 +1,4 @@
+import { Modal } from "@/components/modal";
 import { StatusBadge } from "@/components/status-badge";
 import { db } from "@/lib/db";
 import { formatDate } from "@/lib/format";
@@ -33,63 +34,59 @@ export default async function UsuariosPage() {
           <h1>Usuarios</h1>
           <p className="muted">Altas, accesos y permisos por empresa.</p>
         </div>
-      </header>
-
-      {canManageUsers ? (
-        <article className="card">
-          <div className="card-header">
-            <h2>Nuevo usuario o acceso</h2>
-          </div>
-          <form action={createUserWithMembership} className="card-body form-grid">
-            <label className="field">
-              Nombre
-              <input className="input" name="name" placeholder="Nombre del usuario" required />
-            </label>
-            <label className="field">
-              Email
-              <input className="input" name="email" type="email" placeholder="usuario@empresa.com" required />
-            </label>
-            <label className="field">
-              Password inicial
-              <input className="input" name="password" type="password" minLength={8} required />
-            </label>
-            <label className="field">
-              Empresa
-              <select className="input" name="companyId" defaultValue={session.company.id}>
-                {companies.map((company) => (
-                  <option key={company.id} value={company.id}>
-                    {company.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="field">
-              Rol en empresa
-              <select className="input" name="role" defaultValue="VIEWER">
-                <option value="OWNER">Owner</option>
-                <option value="ADMIN">Admin</option>
-                <option value="TECH">Tecnico</option>
-                <option value="BILLING">Facturacion</option>
-                <option value="VIEWER">Solo lectura</option>
-              </select>
-            </label>
-            {session.platformRole === "SUPER_ADMIN" ? (
+        {canManageUsers ? (
+          <Modal title="Anadir usuario" triggerLabel="Anadir usuario">
+            <form action={createUserWithMembership} className="modal-body form-grid">
               <label className="field">
-                Rol plataforma
-                <select className="input" name="platformRole" defaultValue="USER">
-                  <option value="USER">Usuario</option>
-                  <option value="SUPER_ADMIN">Super admin</option>
+                Nombre
+                <input className="input" name="name" placeholder="Nombre del usuario" required />
+              </label>
+              <label className="field">
+                Email
+                <input className="input" name="email" type="email" placeholder="usuario@empresa.com" required />
+              </label>
+              <label className="field">
+                Password inicial
+                <input className="input" name="password" type="password" minLength={8} required />
+              </label>
+              <label className="field">
+                Empresa
+                <select className="input" name="companyId" defaultValue={session.company.id}>
+                  {companies.map((company) => (
+                    <option key={company.id} value={company.id}>
+                      {company.name}
+                    </option>
+                  ))}
                 </select>
               </label>
-            ) : (
-              <input name="platformRole" type="hidden" value="USER" />
-            )}
-            <div className="form-actions wide">
-              <button className="button" type="submit">Guardar usuario</button>
-            </div>
-          </form>
-        </article>
-      ) : null}
+              <label className="field">
+                Rol en empresa
+                <select className="input" name="role" defaultValue="VIEWER">
+                  <option value="OWNER">Owner</option>
+                  <option value="ADMIN">Admin</option>
+                  <option value="TECH">Tecnico</option>
+                  <option value="BILLING">Facturacion</option>
+                  <option value="VIEWER">Solo lectura</option>
+                </select>
+              </label>
+              {session.platformRole === "SUPER_ADMIN" ? (
+                <label className="field">
+                  Rol plataforma
+                  <select className="input" name="platformRole" defaultValue="USER">
+                    <option value="USER">Usuario</option>
+                    <option value="SUPER_ADMIN">Super admin</option>
+                  </select>
+                </label>
+              ) : (
+                <input name="platformRole" type="hidden" value="USER" />
+              )}
+              <div className="form-actions wide">
+                <button className="button" type="submit">Guardar usuario</button>
+              </div>
+            </form>
+          </Modal>
+        ) : null}
+      </header>
 
       <article className="card">
         <div className="card-header">
